@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.1
+
+- New package icon.
+- Manifest namespace aligned with the published page (ManifestDK).
+- No gameplay changes.
+
 ## 0.4.0
 
 - **Per-tinder speed override.** Select a single tinder in the *Tinders* tab and give it its own

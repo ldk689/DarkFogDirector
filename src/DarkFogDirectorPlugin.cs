@@ -18,7 +18,7 @@ namespace DarkFogDirector
     {
         public const string PluginGuid = "dsp.darkfog.director";
         public const string PluginName = "Dark Fog Expansion Director";
-        public const string PluginVersion = "0.4.0";
+        public const string PluginVersion = "0.4.1";
 
         internal static DarkFogDirectorPlugin Instance;
         internal static ManualLogSource Log;
