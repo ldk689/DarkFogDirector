@@ -1,37 +1,68 @@
-# Changelog
+# Changelog / 更新日志
 
-## 0.4.3
+<!-- 最近三个版本；更早的版本在下方。 -->
 
-- **Fixed the `ArgumentException: Getting control N's position ... when doing repaint` crash that
-  showed up when launching repeatedly.** The panel refreshed its hive/star/tinder lists from inside
-  the click handler, i.e. in the middle of an IMGUI frame. The Repaint pass then saw one more button
-  than the Layout pass, Unity aborted the GUI and the quit-time autosave failed with it. Data is now
-  rebuilt in `Update` only, and the "cancel queued order" button always occupies its slot (disabled
-  instead of disappearing).
-- **Tinder spawning now respects the game's own cap.** `EnemyDFHiveSystem.AddIdleTinder` writes into
-  a fixed `int[16]` with no bounds check, and vanilla only keeps
-  `idleTinderCount < tinderDocks.Length`. Bypassing that gate (as the on-demand spawn used to) could
-  push a hive past 16 idle tinders and make the game throw `IndexOutOfRangeException` every tick.
-- 修掉了「反复发射后游戏报错」：面板原先在按钮回调里直接重算列表，导致 IMGUI 的 Layout 与
-  Repaint 控件数不一致、抛 `ArgumentException`，并连带退出时的自动存档失败。现在只在 Update
-  里刷新，待发按钮也改为常驻（不可用时置灰）。
-- 现造火种现在遵守原版上限：空闲火种数受 `tinderDocks.Length` 与固定 16 格 `idleTinderIds`
-  双重限制，不会再触发游戏侧 `IndexOutOfRangeException`。
+## 0.4.3 — 2026-11-05 · 修掉连续发射后的报错
 
-## 0.4.2
+### 现象
 
-- **The panel can be moved now.** Drag the title bar to put it wherever you like; double-click the
-  title bar to snap it back to the centre of the screen. The position is remembered in the BepInEx
-  config (`UI.PanelX` / `UI.PanelY`) and restored next time. The window is also clamped back on
-  screen when the resolution changes.
-- 面板可以拖动了：按住标题栏拖到任意位置，双击标题栏回到屏幕中央；位置写进 BepInEx 配置
-  （`UI.PanelX` / `UI.PanelY`），下次打开沿用。分辨率变化时自动拉回可见区域。
+在面板里连续点「发射」，游戏报错并中断，退出时自动存档写成 `<auto save errored>`：
 
-## 0.4.1
+```
+ArgumentException: Getting control 161's position in a group with only 161 controls when doing repaint
+Aborting
+  at UnityEngine.GUILayoutGroup.GetNext ()
+  ...
+  at DarkFogDirector.DirectorPanel.DrawLaunchTab ()
+  at DarkFogDirector.DirectorPanel.DrawBody ()
+  at DarkFogDirector.DirectorPanel.DrawWindow ()
+GUI Error: You are pushing more GUIClips than you are popping.
+```
 
-- New package icon.
-- Manifest namespace aligned with the published page (ManifestDK).
-- No gameplay changes.
+### 根因
+
+- `DoLaunch()` 在按钮回调里直接调用 `Refresh()` 重算巢穴 / 星系 / 火种列表。
+- IMGUI 一帧内会走 `Layout → 各种事件 → Repaint` 多趟；每次发射都会当场新建一个巢穴，
+  列表因此多一行，Repaint 阶段要画的控件比 Layout 阶段登记的多一个。
+- Unity 抛 `ArgumentException` 后 `Aborting`，GUIClip 失衡，连带退出时的自动存档失败。
+
+### 修复
+
+- 数据只在 `Update` 里刷新（新增 `DirectorPanel.Tick()`），按钮回调一律只调 `QueueRefresh()`，
+  保证同一帧内列表长度恒定。
+- 「取消待发」按钮改为**常驻占位**、不可用时置灰，不再按条件增删控件。
+
+### 顺带加固
+
+- 现造火种（按需 `SpawnTinderNow`）补上原版闸门 `idleTinderCount < tinderDocks.Length`。
+- 额外按 `EnemyDFHiveSystem.idleTinderIds` 的固定 16 格做第二道保险：原版 `AddIdleTinder`
+  没有任何越界检查，第 17 个空闲火种会让游戏每 tick 抛 `IndexOutOfRangeException`。
+
+### English
+
+- Fixed `ArgumentException: Getting control N's position ... when doing repaint`. The panel rebuilt
+  its lists inside a button handler, in the middle of an IMGUI frame; the Repaint pass then saw more
+  buttons than the Layout pass, Unity aborted the GUI and the quit-time autosave failed with it.
+  Data is now rebuilt in `Update` only.
+- The "cancel queued order" button keeps its slot (disabled instead of hidden).
+- On-demand tinder spawning now honours vanilla's `idleTinderCount < tinderDocks.Length` gate and
+  the fixed 16-slot `idleTinderIds` array.
+
+## 0.4.2 — 2026-11-05 · 面板可拖动
+
+- **IMGUI 面板支持拖动。** 按住标题栏即可把面板拖到任意位置，双击标题栏回到屏幕中央。
+- 位置写入 BepInEx 配置 `UI.PanelX` / `UI.PanelY`，下次呼出沿用；分辨率变化或被拖出屏幕时
+  会自动拉回可见区域。
+- 标题栏右侧增加了一行多语言提示（中 / 英 / 法 / 德 / 日）。
+- English: the IMGUI panel is now draggable by its title bar, double-click recentres it, and the
+  position is persisted in the BepInEx config (`UI.PanelX` / `UI.PanelY`).
+
+## 0.4.1 — 2026-11-05 · 新增图标
+
+- 新增 MOD 图标（`icon.png`），随 Thunderstore 包一起发布。
+- 清单命名空间对齐已发布的页面（`ManifestDK`）。
+- 无玩法改动。
+- English: new package icon; manifest namespace aligned with the published page; no gameplay changes.
 
 ## 0.4.0
 
