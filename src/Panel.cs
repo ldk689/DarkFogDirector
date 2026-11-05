@@ -59,6 +59,7 @@ namespace DarkFogDirector
 
         private static Vector2 _srcScroll, _dstScroll, _tinderScroll;
         private static float _nextRefresh;
+        private static bool _refreshQueued;
         private static string _status;
         private static int _selHive = -1;
         private static int _selStar = -1;
@@ -85,6 +86,40 @@ namespace DarkFogDirector
             {
                 SavePosition();
             }
+        }
+
+        /// <summary>
+        /// 每帧在 Update 里调用（**绝不能**在 OnGUI 里做）。
+        ///
+        /// IMGUI 一帧会走多趟：Layout → 各种事件 → Repaint。如果在这中间重算列表，
+        /// Repaint 就会多/少画控件，Unity 抛
+        ///   "Getting control N's position in a group with only M controls when doing repaint"
+        /// 之后 GUI 直接 Aborting、GUIClip 失衡，连带存档都失败。
+        /// 所以数据只在 Update 里换，保证同一帧内列表长度恒定。
+        /// </summary>
+        internal static void Tick()
+        {
+            if (!Visible) return;
+
+            if (_refreshQueued)
+            {
+                _refreshQueued = false;
+                Refresh();
+                _nextRefresh = Time.realtimeSinceStartup + 2f;
+                return;
+            }
+
+            if (Time.realtimeSinceStartup >= _nextRefresh)
+            {
+                Refresh();
+                _nextRefresh = Time.realtimeSinceStartup + 2f;
+            }
+        }
+
+        /// <summary>标记「本帧结束后重算列表」，OnGUI 里的按钮回调只许调这个。</summary>
+        private static void QueueRefresh()
+        {
+            _refreshQueued = true;
         }
 
         // ── 样式 ───────────────────────────────────────────────────────────
@@ -301,7 +336,7 @@ namespace DarkFogDirector
             if (_selStar < 0) { _status = L.T("st_pick_star"); return; }
 
             _status = LaunchOrders.RequestLaunch(sector, _selHive, _selStar);
-            Refresh();
+            QueueRefresh();
         }
 
         private static void ApplySpeedToSelected()
@@ -316,7 +351,7 @@ namespace DarkFogDirector
             var sector = Sector();
             int n = sector != null ? TinderSpeed.ApplyNow(sector) : 0;
             _status = L.T("st_speed_one", v, n);
-            Refresh();
+            QueueRefresh();
         }
 
         private static void ApplySpeedToAll()
@@ -329,7 +364,7 @@ namespace DarkFogDirector
             var sector = Sector();
             int n = sector != null ? TinderSpeed.ApplyNow(sector) : 0;
             _status = L.T("st_speed_applied", v, n);
-            Refresh();
+            QueueRefresh();
         }
 
         // ── 绘制 ───────────────────────────────────────────────────────────
@@ -341,12 +376,6 @@ namespace DarkFogDirector
             try
             {
                 EnsureStyles();
-
-                if (Time.realtimeSinceStartup >= _nextRefresh)
-                {
-                    Refresh();
-                    _nextRefresh = Time.realtimeSinceStartup + 2f;
-                }
 
                 if (!_windowRectReady)
                 {
@@ -537,17 +566,21 @@ namespace DarkFogDirector
             }
             if (GUILayout.Button(L.T("btn_refresh"), _button, GUILayout.Width(95f), GUILayout.Height(38f)))
             {
-                Refresh();
+                QueueRefresh();
                 _status = L.T("st_refreshed");
             }
-            if (_selHive >= 0 && LaunchOrders.HasPending(_selHive))
+
+            // 待发按钮**永远占位**：它是否可用会随游戏 tick 变化，
+            // 若按条件增删控件，Layout 与 Repaint 的控件数就会对不上。
+            bool canCancel = _selHive >= 0 && LaunchOrders.HasPending(_selHive);
+            bool wasEnabled = GUI.enabled;
+            GUI.enabled = canCancel;
+            if (GUILayout.Button(L.T("btn_cancel"), _button, GUILayout.Width(120f), GUILayout.Height(38f)) && canCancel)
             {
-                if (GUILayout.Button(L.T("btn_cancel"), _button, GUILayout.Width(120f), GUILayout.Height(38f)))
-                {
-                    _status = LaunchOrders.CancelPending(_selHive);
-                    Refresh();
-                }
+                _status = LaunchOrders.CancelPending(_selHive);
+                QueueRefresh();
             }
+            GUI.enabled = wasEnabled;
             if (GUILayout.Button(L.T("btn_close"), _button, GUILayout.Width(95f), GUILayout.Height(38f)))
             {
                 Visible = false;
@@ -594,7 +627,7 @@ namespace DarkFogDirector
             {
                 TinderSpeed.ClearAll();
                 _status = L.T("st_restored");
-                Refresh();
+                QueueRefresh();
             }
             GUILayout.EndHorizontal();
 
@@ -606,7 +639,7 @@ namespace DarkFogDirector
             GUILayout.BeginHorizontal();
             if (GUILayout.Button(L.T("btn_refresh"), _button, GUILayout.Width(95f), GUILayout.Height(34f)))
             {
-                Refresh();
+                QueueRefresh();
                 _status = L.T("st_refreshed");
             }
             if (GUILayout.Button(L.T("btn_close"), _button, GUILayout.Width(95f), GUILayout.Height(34f)))

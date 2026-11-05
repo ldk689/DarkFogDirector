@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.4.3
+
+- **Fixed the `ArgumentException: Getting control N's position ... when doing repaint` crash that
+  showed up when launching repeatedly.** The panel refreshed its hive/star/tinder lists from inside
+  the click handler, i.e. in the middle of an IMGUI frame. The Repaint pass then saw one more button
+  than the Layout pass, Unity aborted the GUI and the quit-time autosave failed with it. Data is now
+  rebuilt in `Update` only, and the "cancel queued order" button always occupies its slot (disabled
+  instead of disappearing).
+- **Tinder spawning now respects the game's own cap.** `EnemyDFHiveSystem.AddIdleTinder` writes into
+  a fixed `int[16]` with no bounds check, and vanilla only keeps
+  `idleTinderCount < tinderDocks.Length`. Bypassing that gate (as the on-demand spawn used to) could
+  push a hive past 16 idle tinders and make the game throw `IndexOutOfRangeException` every tick.
+- 修掉了「反复发射后游戏报错」：面板原先在按钮回调里直接重算列表，导致 IMGUI 的 Layout 与
+  Repaint 控件数不一致、抛 `ArgumentException`，并连带退出时的自动存档失败。现在只在 Update
+  里刷新，待发按钮也改为常驻（不可用时置灰）。
+- 现造火种现在遵守原版上限：空闲火种数受 `tinderDocks.Length` 与固定 16 格 `idleTinderIds`
+  双重限制，不会再触发游戏侧 `IndexOutOfRangeException`。
+
 ## 0.4.2
 
 - **The panel can be moved now.** Drag the title bar to put it wherever you like; double-click the

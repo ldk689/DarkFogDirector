@@ -264,6 +264,22 @@ namespace DarkFogDirector
             var docks = hive.tinderDocks;
             if (docks == null || docks.Length == 0) return -1;
 
+            // 原版 DFSCoreComponent.LogicTick 的闸门：
+            //     if (hive.idleTinderCount >= hive.tinderDocks.Length) return;
+            // 空闲火种数达到停靠位数就不再造。我们必须沿用这条，否则会把
+            // idleTinderIds（EnemyDFHiveSystem.Init 里固定 new int[16]）顶爆。
+            if (hive.idleTinderCount >= docks.Length) return -1;
+
+            // 二道保险：AddIdleTinder 没有任何越界检查，17 个空闲火种就会
+            // IndexOutOfRangeException，而且是在游戏自己的 tick 里抛，会一直刷。
+            if (hive.idleTinderIds != null && hive.idleTinderCount >= hive.idleTinderIds.Length)
+            {
+                DarkFogDirectorPlugin.LogWarn(string.Format(
+                    "hive {0}: idle tinder list is full ({1}/{2}), refusing to spawn more.",
+                    hive.hiveAstroId, hive.idleTinderCount, hive.idleTinderIds.Length));
+                return -1;
+            }
+
             try
             {
                 hive.AddTinderDeferred(0);            // 0 is taken modulo tinderDocks.Length inside

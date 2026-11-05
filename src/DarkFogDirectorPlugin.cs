@@ -18,7 +18,7 @@ namespace DarkFogDirector
     {
         public const string PluginGuid = "dsp.darkfog.director";
         public const string PluginName = "Dark Fog Expansion Director";
-        public const string PluginVersion = "0.4.2";
+        public const string PluginVersion = "0.4.3";
 
         internal static DarkFogDirectorPlugin Instance;
         internal static ManualLogSource Log;
@@ -87,6 +87,10 @@ namespace DarkFogDirector
         {
             try
             {
+                // 界面数据只在 Update 里刷新：OnGUI 一帧要走 Layout / 事件 / Repaint 多趟，
+                // 中途改列表长度会让 Unity 抛 "Getting control N's position..."。
+                DirectorPanel.Tick();
+
                 // \ 键（Backspace 与 Enter 之间那个）呼出/关闭操作界面
                 if (UnityEngine.Input.GetKeyDown(KeyCode.Backslash))
                 {
