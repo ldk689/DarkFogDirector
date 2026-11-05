@@ -24,6 +24,10 @@ namespace DarkFogDirector
         private const float ListHeight = 400f;
         private const float RowHeight = 24f;
 
+        // 拖动窗口。GUI.Window 自带窗口拖动，我们只负责把「标题栏」这一段交给它。
+        private const int WindowId = 0x444644;      // 'DFD'
+        private const float TitleBarFallbackHeight = 40f;
+
         private struct HiveRow
         {
             public int HiveAstroId;
@@ -62,6 +66,12 @@ namespace DarkFogDirector
         private static int _tab;
         private static string _speedText = "1200";
 
+        // 窗口位置（屏幕坐标，左上角）。_windowRectReady 为 false 时从配置里读或居中。
+        private static Rect _windowRect;
+        private static bool _windowRectReady;
+        private static bool _recenterRequested;
+        private static Rect _titleBarRect;
+
         internal static void Toggle()
         {
             Visible = !Visible;
@@ -70,6 +80,10 @@ namespace DarkFogDirector
                 L.Refresh();
                 Refresh();
                 _nextRefresh = Time.realtimeSinceStartup + 2f;
+            }
+            else
+            {
+                SavePosition();
             }
         }
 
@@ -334,38 +348,138 @@ namespace DarkFogDirector
                     _nextRefresh = Time.realtimeSinceStartup + 2f;
                 }
 
-                float w = PanelWidth;
-                float h = PanelHeight;
-                var area = new Rect((Screen.width - w) * 0.5f, (Screen.height - h) * 0.5f, w, h);
+                if (!_windowRectReady)
+                {
+                    LoadPosition();
+                    _windowRectReady = true;
+                }
 
-                GUILayout.BeginArea(area);
-                GUI.DrawTexture(new Rect(0f, 0f, w, h), _panelTex);
+                // GUI.Window 负责拖动/焦点/裁剪；我们只把标题栏那一条交给它拖。
+                _windowRect = GUI.Window(WindowId, _windowRect, DrawWindow, GUIContent.none, GUIStyle.none);
 
-                GUILayout.BeginVertical();
+                if (_recenterRequested)
+                {
+                    _recenterRequested = false;
+                    _windowRect = CenteredRect();
+                }
 
-                GUILayout.Label(L.T("title"), _title);
-
-                GUILayout.BeginHorizontal();
-                if (GUILayout.Button(L.T("tab_launch"), _tab == 0 ? _tabOn : _tabOff, GUILayout.Width(110f), GUILayout.Height(30f))) _tab = 0;
-                if (GUILayout.Button(L.T("tab_tinders"), _tab == 1 ? _tabOn : _tabOff, GUILayout.Width(110f), GUILayout.Height(30f))) _tab = 1;
-                GUILayout.Label(L.T("header", "\\", _hives.Count, _stars.Count, _tinders.Count, LaunchOrders.PendingCount), _small);
-                GUILayout.EndHorizontal();
-
-                GUILayout.Space(4f);
-                if (_tab == 0) DrawLaunchTab();
-                else DrawTinderTab();
-
-                GUILayout.Space(6f);
-                GUILayout.Label(_status, _statusStyle);
-
-                GUILayout.EndVertical();
-                GUILayout.EndArea();
+                // 分辨率变化或拖到屏幕外时，把窗口拉回可见范围。
+                _windowRect = ClampToScreen(_windowRect);
             }
             catch (Exception e)
             {
                 DarkFogDirectorPlugin.LogError("panel draw failed: " + e.Message);
                 Visible = false;
             }
+        }
+
+        private static Rect CenteredRect()
+        {
+            return new Rect(
+                Mathf.Round((Screen.width - PanelWidth) * 0.5f),
+                Mathf.Round((Screen.height - PanelHeight) * 0.5f),
+                PanelWidth,
+                PanelHeight);
+        }
+
+        private static Rect ClampToScreen(Rect r)
+        {
+            r.width = PanelWidth;
+            r.height = PanelHeight;
+            r.x = Mathf.Clamp(r.x, 0f, Mathf.Max(0f, Screen.width - PanelWidth));
+            r.y = Mathf.Clamp(r.y, 0f, Mathf.Max(0f, Screen.height - PanelHeight));
+            return r;
+        }
+
+        private static void LoadPosition()
+        {
+            float x = -1f;
+            float y = -1f;
+            try
+            {
+                if (DarkFogDirectorPlugin.PanelX != null) x = DarkFogDirectorPlugin.PanelX.Value;
+                if (DarkFogDirectorPlugin.PanelY != null) y = DarkFogDirectorPlugin.PanelY.Value;
+            }
+            catch (Exception) { }
+
+            _windowRect = (x >= 0f && y >= 0f)
+                ? new Rect(x, y, PanelWidth, PanelHeight)
+                : CenteredRect();
+        }
+
+        /// <summary>把当前窗口位置写回配置；关闭面板与退出游戏时调用。</summary>
+        internal static void SavePosition()
+        {
+            try
+            {
+                if (!_windowRectReady) return;
+                if (DarkFogDirectorPlugin.PanelX != null) DarkFogDirectorPlugin.PanelX.Value = _windowRect.x;
+                if (DarkFogDirectorPlugin.PanelY != null) DarkFogDirectorPlugin.PanelY.Value = _windowRect.y;
+                if (DarkFogDirectorPlugin.Instance != null) DarkFogDirectorPlugin.Instance.Config.Save();
+            }
+            catch (Exception) { }
+        }
+
+        private static void DrawWindow(int id)
+        {
+            float w = PanelWidth;
+            float h = PanelHeight;
+
+            GUI.DrawTexture(new Rect(0f, 0f, w, h), _panelTex);
+
+            GUILayout.BeginArea(new Rect(0f, 0f, w, h));
+            try
+            {
+                DrawBody();
+            }
+            finally
+            {
+                GUILayout.EndArea();
+            }
+
+            var dragRect = _titleBarRect;
+            if (dragRect.width < 1f || dragRect.height < 1f)
+            {
+                dragRect = new Rect(0f, 0f, w, TitleBarFallbackHeight);
+            }
+
+            // 双击标题栏回到屏幕中央。
+            if (Event.current != null
+                && Event.current.type == EventType.MouseDown
+                && Event.current.clickCount >= 2
+                && dragRect.Contains(Event.current.mousePosition))
+            {
+                _recenterRequested = true;
+            }
+
+            GUI.DragWindow(dragRect);
+        }
+
+        private static void DrawBody()
+        {
+            GUILayout.BeginVertical();
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(L.T("title"), _title);
+            GUILayout.FlexibleSpace();
+            GUILayout.Label(L.T("drag_hint"), _small);
+            GUILayout.EndHorizontal();
+            _titleBarRect = GUILayoutUtility.GetLastRect();
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button(L.T("tab_launch"), _tab == 0 ? _tabOn : _tabOff, GUILayout.Width(110f), GUILayout.Height(30f))) _tab = 0;
+            if (GUILayout.Button(L.T("tab_tinders"), _tab == 1 ? _tabOn : _tabOff, GUILayout.Width(110f), GUILayout.Height(30f))) _tab = 1;
+            GUILayout.Label(L.T("header", "\\", _hives.Count, _stars.Count, _tinders.Count, LaunchOrders.PendingCount), _small);
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(4f);
+            if (_tab == 0) DrawLaunchTab();
+            else DrawTinderTab();
+
+            GUILayout.Space(6f);
+            GUILayout.Label(_status, _statusStyle);
+
+            GUILayout.EndVertical();
         }
 
         private static void DrawLaunchTab()

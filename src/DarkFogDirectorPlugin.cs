@@ -18,7 +18,7 @@ namespace DarkFogDirector
     {
         public const string PluginGuid = "dsp.darkfog.director";
         public const string PluginName = "Dark Fog Expansion Director";
-        public const string PluginVersion = "0.4.1";
+        public const string PluginVersion = "0.4.2";
 
         internal static DarkFogDirectorPlugin Instance;
         internal static ManualLogSource Log;
@@ -27,6 +27,10 @@ namespace DarkFogDirector
         internal static ConfigEntry<KeyboardShortcut> DumpKey;
         internal static ConfigEntry<int> ForceCooldownTicks;
         internal static ConfigEntry<bool> Verbose;
+
+        /// <summary>面板左上角位置（屏幕像素）。-1 表示「按屏幕居中」。</summary>
+        internal static ConfigEntry<float> PanelX;
+        internal static ConfigEntry<float> PanelY;
 
         internal static string OrdersPath;
         internal static string DumpPath;
@@ -47,6 +51,11 @@ namespace DarkFogDirector
             Verbose = Config.Bind("Behaviour", "VerboseLog", false,
                 "每次改写目标时输出详细日志。");
 
+            PanelX = Config.Bind("UI", "PanelX", -1f,
+                "面板左上角的屏幕 X 坐标（-1 = 每次按屏幕居中）。拖动标题栏后自动记忆。");
+            PanelY = Config.Bind("UI", "PanelY", -1f,
+                "面板左上角的屏幕 Y 坐标（-1 = 每次按屏幕居中）。拖动标题栏后自动记忆。");
+
             OrdersPath = Path.Combine(Paths.ConfigPath, "DarkFogDirector.orders.txt");
             DumpPath = Path.Combine(Paths.ConfigPath, "DarkFogDirector.dump.txt");
 
@@ -66,6 +75,8 @@ namespace DarkFogDirector
 
         private void OnDestroy()
         {
+            DirectorPanel.SavePosition();
+
             if (_harmony != null)
             {
                 try { _harmony.UnpatchSelf(); } catch { }

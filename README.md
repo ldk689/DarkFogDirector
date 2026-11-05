@@ -19,7 +19,8 @@ In vanilla DSP, the Dark Fog decides on its own when and where to send a *Tinder
 seed that crosses star systems to found a new hive). This mod puts that decision in your hands.
 
 Press **`\`** in game to open the panel. It follows your in-game language
-(English / 简体中文 / Français / Deutsch / 日本語).
+(English / 简体中文 / Français / Deutsch / 日本語). The window can be moved: drag its title bar,
+double-click the title bar to snap it back to the centre, and the position is remembered.
 
 | Feature | Description |
 |---|---|
@@ -107,6 +108,7 @@ MIT — see [LICENSE](LICENSE).
 在原版里，黑雾自己决定什么时候、向哪里发射**火种**。本 MOD 把这个决定权交给你。
 
 游戏内按 **`\`** 呼出面板。界面语言跟随游戏设置（中/英/法/德/日）。
+面板可以拖动：按住标题栏拖到任意位置，双击标题栏回到屏幕中央，位置会被记住。
 
 | 功能 | 说明 |
 |---|---|

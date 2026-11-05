@@ -87,6 +87,11 @@ namespace DarkFogDirector
             // ── 面板框架 ───────────────────────────────────────────────────
             Add("title", "黑雾扩张指挥", "Dark Fog Director", "Directeur du Brouillard Sombre",
                 "Dunkelnebel-Direktor", "ダークフォグ拡張指令");
+            Add("drag_hint", "拖动标题栏移动窗口 · 双击复位",
+                "drag title bar to move · double-click to reset",
+                "glisser le titre pour déplacer · double-clic pour recentrer",
+                "Titelleiste ziehen zum Verschieben · Doppelklick zum Zurücksetzen",
+                "タイトルバーをドラッグで移動 · ダブルクリックで中央へ");
             Add("tab_launch", "发射指挥", "Launch", "Lancer", "Abschuss", "発射");
             Add("tab_tinders", "火种管理", "Tinders", "Embrands", "Zündkörper", "種火");
             Add("header", "按 {0} 键开关    巢穴 {1}    可扩张星系 {2}    火种 {3}    待发 {4}",

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.2
+
+- **The panel can be moved now.** Drag the title bar to put it wherever you like; double-click the
+  title bar to snap it back to the centre of the screen. The position is remembered in the BepInEx
+  config (`UI.PanelX` / `UI.PanelY`) and restored next time. The window is also clamped back on
+  screen when the resolution changes.
+- 面板可以拖动了：按住标题栏拖到任意位置，双击标题栏回到屏幕中央；位置写进 BepInEx 配置
+  （`UI.PanelX` / `UI.PanelY`），下次打开沿用。分辨率变化时自动拉回可见区域。
+
 ## 0.4.1
 
 - New package icon.
