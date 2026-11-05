@@ -1,0 +1,12 @@
+* text=auto
+
+# 源码统一 LF，避免不同系统提交时整文件 diff
+*.cs     text eol=lf
+*.csproj text eol=lf
+*.md     text eol=lf
+*.json   text eol=lf
+*.ps1    text eol=crlf
+*.txt    text eol=lf
+
+*.png binary
+*.dll binary

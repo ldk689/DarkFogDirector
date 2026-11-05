@@ -1,0 +1,20 @@
+# 编译输出
+bin/
+obj/
+*.pdb
+*.dll.old
+
+# 打包产物（发布用 zip 不进仓库）
+dist/
+package/
+
+# 离线编译校验用的打桩（不是产品代码，但保留在仓库里方便他人复核 API）
+# typecheck/Stubs.cs
+
+# 编辑器 / 系统
+.vs/
+.idea/
+*.user
+*.suo
+Thumbs.db
+desktop.ini

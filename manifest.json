@@ -1,0 +1,10 @@
+{
+  "namespace": "ldk689",
+  "name": "DarkFogDirector",
+  "description": "Take command of Dark Fog expansion: pick a hive and a target system, launch the Tinder with auto-filled fuel, and override flight speed. Bilingual UI, all 5 game languages.",
+  "version_number": "0.4.0",
+  "dependencies": [
+    "xiaoye97-BepInEx-5.4.17"
+  ],
+  "website_url": ""
+}
